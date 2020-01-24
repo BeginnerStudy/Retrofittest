@@ -1,9 +1,17 @@
 package com.example.retrofittest;
 
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.fragment.app.Fragment;
+import androidx.fragment.app.FragmentActivity;
+import androidx.viewpager.widget.ViewPager;
 
+import android.app.Activity;
 import android.os.Bundle;
+import android.text.Editable;
+import android.text.TextUtils;
+import android.text.TextWatcher;
 import android.util.Log;
+import android.widget.EditText;
 import android.widget.TextView;
 
 import com.google.gson.Gson;
@@ -19,126 +27,111 @@ import retrofit2.converter.gson.GsonConverterFactory;
 
 public class MainActivity extends AppCompatActivity {
 
-    TextView textResult;
+    TextView text_title_page, text_page;
     JsonPlaceHolderAPI jsonPlaceHolderAPI;
+
+    ViewPagerAdapter viewPagerAdapter;
+    ViewPager viewPager;
+
+    EditText search_users;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        textResult = findViewById(R.id.text_result);
+        viewPagerAdapter = new ViewPagerAdapter(getSupportFragmentManager(),R.string.appbar_scrolling_view_behavior);
+
+        text_page = findViewById(R.id.text_page);
+        text_title_page = findViewById(R.id.text_title_page);
+        viewPager = findViewById(R.id.view_pager);
+        search_users = findViewById(R.id.search_users);
+        search_users.addTextChangedListener(new TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {
+
+            }
+
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {
+                if (TextUtils.isEmpty(search_users.getText())){
+                    viewPager.setCurrentItem(0);
+                }else {
+                    viewPager.setCurrentItem((Integer.parseInt(s.toString()))-1);
+                }
+            }
+
+            @Override
+            public void afterTextChanged(Editable s) {
+
+            }
+        });
 
         final Retrofit retrofit = new Retrofit.Builder()
-                .baseUrl("https://opendata.cwb.gov.tw/api/v1/rest/datastore/")
+                .baseUrl("https://data.boch.gov.tw/")
                 .addConverterFactory(GsonConverterFactory.create())
                 .build();
 
         jsonPlaceHolderAPI = retrofit.create(JsonPlaceHolderAPI.class);
 
-//        Call<List<Post.TimeBean>> call = jsonPlaceHolderAPI.getPosts();
-//
-//        call.enqueue(new Callback<List<Post.TimeBean>>() {
-//            @Override
-//            public void onResponse(Call<List<Post.TimeBean>> call, Response<List<Post.TimeBean>> response) {
-//                List<Post.TimeBean> posts = response.body();
-//
-//                if (!response.isSuccessful()){
-//                    textResult.setText("Code: "+ response.code());
-//                Log.d("D200","Code: "+ response.code());
-//                return;
-//            }
-//
-//                for (Post.TimeBean post : posts){
-//                    String content="";
-//                    content += "開始: "+ post.getStartTime() + "\n";
-//                    content += "結束: "+ post.getEndTime() + "\n";
-//                    content += "value: "+ post.getElementValue().getValue() + "\n";
-//                    content += "measures: "+ post.getElementValue().getMeasures() + "\n\n";
-//
-//                    textResult.append(content);
-//                }
-//            }
-//
-//            @Override
-//            public void onFailure(Call<List<Post.TimeBean>> call, Throwable t) {
-//
-//                textResult.setText(t.getMessage());
-//               Log.d("D100=",""+t.getMessage());
-//            }
-//        });
+        Call<List<Post>> call = jsonPlaceHolderAPI.getPosts();
 
-
-
-        Call<Chunli> call = jsonPlaceHolderAPI.getPosts();
-
-        call.enqueue(new Callback<Chunli>() {
+        call.enqueue(new Callback<List<Post>>() {
             @Override
-            public void onResponse(Call<Chunli> call, Response<Chunli> response) {
+            public void onResponse(Call<List<Post>> call, Response<List<Post>> response) {
                 if (!response.isSuccessful()){
-                    textResult.setText("Code: "+ response.code());
+
                     Log.d("D200","Code: "+ response.code());
                     return;
                 }
 
-                Chunli chunli = response.body();
-                Log.d("D200",chunli.getRecords().getLocations().get(0).getDatasetDescription());
+                List<Post> posts = response.body();
+                int i = 0;
+                assert posts != null;
+                for (Post post : posts){
+                    i++;
+                    text_title_page.setText("  共 "+i+" 頁");
+
+                    String content="";
+                    content += "名稱: "+ post.getCaseName() + "\n\n";
+                    content += "類別: "+ post.getAssetsClassifyName() + "\n\n";
+                    content += "故事: "+ post.getPastHistory() + "\n\n";
+                    content += "特色: "+ post.getRegisterReason() + "\n\n";
+                    Log.d("D100=",content);
+
+                    ContentFragment contentFragment = new ContentFragment();
+                    contentFragment.getText_result(content);
+                    viewPagerAdapter.addLayouts(contentFragment);
+
+                }
+                viewPager.setAdapter(viewPagerAdapter);
             }
 
             @Override
-            public void onFailure(Call<Chunli> call, Throwable t) {
+            public void onFailure(Call<List<Post>> call, Throwable t) {
+
+               Log.d("E100=",""+t.getMessage());
+            }
+        });
+
+        viewPager.addOnPageChangeListener(new ViewPager.OnPageChangeListener() {
+            @Override
+            public void onPageScrolled(int position, float positionOffset, int positionOffsetPixels) {
+
+            }
+
+            @Override
+            public void onPageSelected(int position) {
+                int i = viewPager.getCurrentItem() +1 ;
+                text_page.setText("第 "+i+" 頁  /");
+            }
+
+            @Override
+            public void onPageScrollStateChanged(int state) {
 
             }
         });
 
-//        call.enqueue(new Callback<>() {
-//            @Override
-//            public void onResponse(Call<Post> call, Response<Post> response) {
-//
-//                if (!response.isSuccessful()){
-//                    textResult.setText("Code: "+ response.code());
-//                    Log.d("D200","Code: "+ response.code());
-//                    return;
-//                }
-//
-//                Post post = response.body();
-//
-//
-//                String content="";
-//
-//                content += "type: "+ post.getElementName() + "\n";
-//                content += "資料: "+ post.getDescription() + "\n\n";
-////                int count = post.getTime().length;
-////                for (int i=0; i<count; i++) {
-////                    content += "開始: " + post.getTime()[i].getStartTime() + "\n";
-////                    content += "結束: " + post.getTime()[i].getEndTime() + "\n";
-////                    content += "value: " + post.getTime()[i].getElementValue().getValue() + "\n";
-////                    content += "measures: " + post.getTime()[i].getElementValue().getMeasures() + "\n\n";
-////
-////
-////                }
-//                textResult.append(content);
-//
-////                for (Post post : posts){
-////                    int i = post.getElementName().length();
-////
-////                    String content="";
-////                    content += "開始: "+ post.getTime() + "\n";
-////                    content += "結束: "+ post.getEndTime() + "\n";
-////                    content += "value: "+ post.getElementValue().getValue() + "\n";
-////                    content += "measures: "+ post.getElementValue().getMeasures() + "\n\n";
-////
-////                    textResult.append(content);
-////                }
-//
-//            }
-//
-//            @Override
-//            public void onFailure(Call<Post> call, Throwable t) {
-//                textResult.setText(t.getMessage());
-//                Log.d("D100=",""+t.getMessage());
-//            }
-//        });
 
     }
 }
